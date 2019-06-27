@@ -1,0 +1,10 @@
+---
+version: "3.2"
+
+volumes:
+  devenv-mariadb-data:
+
+networks:
+  devenv-network:
+
+services:

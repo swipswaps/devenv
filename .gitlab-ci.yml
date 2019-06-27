@@ -1,0 +1,150 @@
+image: alpine:latest
+
+variables:
+  CI_PIPELINE: "gitlab"
+
+stages:
+  - build
+  - validate
+  - syntax
+  - test
+
+## Build Stage
+
+Alpine Linux (Bash) - Build:
+  variables:
+    OSTYPE: linux-gnu
+  stage: build
+  before_script:
+    - apk add bash git rsync
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - /bin/bash tests/installer_test.sh
+
+Ubuntu 16.04 - Build:
+  image: ubuntu:16.04
+  stage: build
+  before_script:
+    - apt-get update && apt-get -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - /bin/bash tests/installer_test.sh
+
+Ubuntu 18.04 - Build:
+  image: ubuntu:18.04
+  stage: build
+  before_script:
+    - apt-get update && apt-get -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - /bin/bash tests/installer_test.sh
+
+Fedora 28 - Build:
+  image: fedora:28
+  stage: build
+  before_script:
+    - dnf -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - /bin/bash tests/installer_test.sh
+
+Fedora 27 - Build:
+  image: fedora:27
+  stage: build
+  before_script:
+    - dnf -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - /bin/bash tests/installer_test.sh
+
+## Validate Stage
+Alpine Linux (Bash) - Test:
+  stage: validate
+  variables:
+    OSTYPE: linux-gnu
+  before_script:
+    - apk add bash git rsync
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - devenv diagnostics
+    - devenv launch .
+
+Ubuntu 16.04 - Test:
+  image: ubuntu:16.04
+  stage: validate
+  before_script:
+    - apt-get update && apt-get -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - devenv diagnostics
+    - devenv launch .
+
+Ubuntu 18.04 - Test:
+  image: ubuntu:18.04
+  stage: validate
+  before_script:
+    - apt-get update && apt-get -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - devenv diagnostics
+    - devenv launch .
+
+Fedora 28 - Test:
+  image: fedora:28
+  stage: validate
+  before_script:
+    - dnf install -y rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - devenv diagnostics
+    - devenv launch .
+
+Fedora 27 - Test:
+  image: fedora:27
+  stage: validate
+  before_script:
+    - dnf install -y rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - devenv diagnostics
+    - devenv launch .
+
+## Syntax Stage
+
+Syntax Check:
+  image: koalaman/shellcheck-alpine:latest
+  stage: syntax
+  script:
+    - shellcheck -x ./installer.sh
+    - shellcheck -x ./bin/devenv
+    - shellcheck -x ./src/*.sh
+
+## Unit Testing Stage
+
+Unit Testing:
+  stage: test
+  before_script:
+    - apk add curl bash
+    - curl -L "https://github.com/kward/shunit2/archive/v2.1.7.tar.gz" | tar zx
+  script:
+    - bash tests/unittest.sh
+
+Functionality:
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  stage: test
+  variables:
+    OSTYPE: 'linux-gnu'
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - apk add bash git rsync build-base libffi-dev openssl-dev python-dev
+    - apk add py-pip
+    - pip install 'docker-compose'
+    - /bin/bash ./installer.sh --unattended --development --local
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u ctsserviceworker --password-stdin
+    - docker info
+    - devenv diagnostics
+  script:
+    - /bin/bash ./tests/functionality.sh

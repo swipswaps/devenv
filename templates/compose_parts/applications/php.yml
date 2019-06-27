@@ -1,0 +1,19 @@
+
+  ## Start Application - SED_PROJECT_NAME
+  SED_PROJECT_NAME:
+    image: devenvapp/php:SED_PHP_VERSION
+    depends_on:
+      - ingress
+    container_name: devenv-SED_PROJECT_NAME
+    restart: always
+    environment:
+      - APACHE_HOST=SED_PROJECT_NAME.appenv.dev
+      - APACHE_USER=SED_USER
+      - APPLICATION_DOCROOT=SED_PROJECT_DOCROOT
+    volumes:
+      - SED_PROJECT_PATH:/var/www/application
+      - SED_BASE_DIRECTORY/templates/php-site.conf.template:/tmp/site.conf.template
+      - SED_BASE_DIRECTORY/templates/httpd.conf.template:/tmp/httpd.conf.template
+    networks:
+      - devenv-network
+  ## End Application - SED_PROJECT_NAME

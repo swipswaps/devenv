@@ -1,0 +1,575 @@
+#!/bin/bash
+# --------------------------------------------------
+#
+# Package: Devenv
+# Author: Josh Grancell <josh@joshgrancell.com>
+# Description: Docker-based web development platform
+# Version: v0.1.0-alpha
+#
+# --------------------------------------------------
+
+function cleanup() {
+    stop
+    docker ps -aqf name="devenv-*" | xargs docker container kill 2> /dev/null
+    docker ps -aqf name="devenv-*" | xargs docker container rm 2> /dev/null
+    rm -f "$BASE_DIRECTORY/.devenv-lock"
+    echo -e "\\033[33mIf you wish to remove your database data you must do so manually with 'docker volume rm devenv-mariadb'.\\033[0m"
+}
+
+function composer() {
+    if command -v php > /dev/null; then
+        php ../thirdparty/php/composer "$@"
+    else
+        echo "PHP is not installed on your machine, therefore composer cannot be run."
+    fi
+}
+
+function delete_application() {
+    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
+    if [ -f "$ENABLED_PATH/$TARGET" ]; then
+        rm "$ENABLED_PATH/$TARGET"
+    else
+        echo "The application $TARGET is not enabled in Devenv."
+    fi
+}
+
+function diagnostics() {
+
+    source /etc/os-release
+
+    echo "Devenv Diagnostic Testing"
+    echo ""
+    echo "Please paste all of this output in an issue if requested."
+    echo "Devenv Diagnostic Information"
+    echo ""
+    echo "Operating System: $PRETTY_NAME"
+    echo "OS Version: $OSTYPE"
+    echo "Core application version: $VERSION"
+    echo "Docker version: $(docker -v)"
+    echo "Shell Version: $SHELL"
+    echo ""
+    echo "Devenv version: $VERSION"
+    echo ""
+    echo "Beginning troubleshooting process:"
+    echo ""
+
+    ## Sed Testing
+    echo "Identified SED binary: $SED_BINARY"
+    echo "Running SED test"
+    echo "testing" > /tmp/sed-test.txt
+    $SED_BINARY -i 's/testing/successful-sed-test/g' /tmp/sed-test.txt
+    SED_CONTENTS=$(cat /tmp/sed-test.txt)
+    if [[ "$SED_CONTENTS" == "successful-sed-test" ]]; then
+        echo "SED test completed successfully"
+        EXIT_STATUS=0
+    else
+        echo "SED test failed - Actual file content: $SED_CONTENTS"
+        EXIT_STATUS=1
+    fi
+    rm /tmp/sed-test.txt
+
+    echo ""
+    echo "Diagnostics completed."
+    exit $EXIT_STATUS
+}
+
+function display_help() {
+    echo "All commands must be in the form of:"
+    echo "    devenv [command] [environment]"
+    echo ""
+    echo "Standard Commands:"
+    echo "    help               Shows this message."
+    echo "    start              Starts all Devenv projects."
+    echo "    stop               Stops all Devenv projects."
+    echo "    restart            Restarts all Devenv projects."
+    echo "    update             Updates all Devenv containers and restarts projects."
+    echo "    status             Shows the current status of all Devenv projects and services."
+    echo "    list               Lists all enabled Devenv projects."
+    echo ""
+    echo "Project Commands:"
+    echo ""
+    echo "    launch [target]    Launches a new Devenv project at the [target] location automatically."
+    echo "    new                Interactive wizard to launch a new Devenv project with custom settings."
+    echo "    delete [target]    Removes a Devenv project (does not affect the codebase)."
+    echo "    connect [target]   Connects to a running Devenv project's CentOS container."
+    echo ""
+    echo "Project Helpers:"
+    echo "    relocate [target]  Moves your command line client into the Devenv project codebase path."
+    echo "    composer [command] Runs a composer command against the current codebase."
+    echo ""
+    echo "Advanced Tools:"
+    echo "    diagnostics        Provides diagnostic output for DevOps troubleshooting."
+    echo "    updateself         Updates the Devenv application itself."
+}
+
+function enable() {
+    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
+    TARGET_PATH="$BASE_DIRECTORY/templates/compose_parts/$TARGET"
+
+    if [[ -d "$TARGET_PATH" ]]; then
+        if [[ -f "$TARGET_PATH/$ENABLE_VERSION.yml" ]]; then
+            cp "$TARGET_PATH/$ENABLE_VERSION.yml" "$ENABLED_PATH/"
+        else
+            echo "The specified version for $TARGET ($ENABLE_VERSION) is not supported."
+            echo "Supported versions are:"
+            for FILE in $(ls "$TARGET_PATH" | grep yml | $SED_BINARY 's/.yml//g'); do
+                echo "  - $FILE"
+            done
+            exit 1
+        fi
+    else
+        echo "$TARGET is not a supported service. Supported services are:"
+        echo "  - mariadb"
+        echo "  - postgres"
+        echo "  - phpmyadmin"
+        exit 1
+    fi
+}
+
+function launch() {
+
+    if [[ ! -d "$TARGET" && -n "$TARGET" ]]; then
+        echo "$TARGET is not a valid path to launch Devenv in."
+        exit 1
+    elif [[ ! -d "$TARGET" && -z "$TARGET" ]]; then
+        TARGET="."
+    fi
+
+    PROJECT_PATH=$($READLINK_BINARY -f "$TARGET")
+    PROJECT_NAME=$(basename "$PROJECT_PATH")
+
+    echo "Provisioning the project $PROJECT_NAME with the codebase from $PROJECT_PATH."
+
+    if [[ -f "$ENV_PATH/enabled/$PROJECT_NAME.yml" ]]; then
+        echo -e '\\033[31mAn application already exists with that name.\\033[0m'
+        exit 1
+    fi
+
+    if [[ "$PROJECT_NAME" == "" ]]; then
+        echo "You must provide an application name."
+        exit 1
+    fi
+
+    if [[ -f "$PROJECT_PATH/.devenv-lang" ]]; then
+        echo "Devenv language boostrap file identified. Parsing."
+        BOOTSTRAP=$(cat "$PROJECT_PATH/.devenv-lang")
+
+        if [[ "$BOOTSTRAP" == 'php' ]]; then
+            echo "PHP language bootstrapping enabled."
+            LANGUAGE='php'
+        elif [[ "$BOOTSTRAP" == 'ruby' ]]; then
+            echo "Ruby language bootstrapping enabled."
+            LANGUAGE='ruby'
+        fi
+
+        if [[ -f "$PROJECT_PATH/.devenv-ver" ]]; then
+            SPEC_VERSION=$(cat "$PROJECT_PATH/.devenv-ver")
+        elif [[ -f "$PROJECT_PATH/.ruby-version" && "$LANGUAGE" == 'ruby' ]]; then
+            SPEC_VERSION=$(< "$PROJECT_PATH/.ruby-version" cut -d- -f2| cut -d\. -f1-2)
+        else
+            SPEC_VERSION="default"
+        fi
+    else
+        echo "Unable to find a Devenv bootstrap file. Bootstrapping with PHP."
+        LANGUAGE='php'
+        SPEC_VERSION="default"
+    fi
+
+    if [[ -f "$PROJECT_PATH/.devenv-docroot" ]]; then
+        echo "Devenv docroot bootstrapping file identified. Parsing."
+        PROJECT_DOCROOT=$(cat "$PROJECT_PATH/.devenv-docroot")
+    elif [[ -f "$PROJECT_PATH/yii" ]]; then
+        PROJECT_DOCROOT="/web"
+    elif [[ -f "$PROJECT_PATH/artisan" ]]; then
+        PROJECT_DOCROOT="/public"
+    elif [[ "$LANGUAGE" == "ruby" ]]; then
+        PROJECT_DOCROOT="/public"
+    else
+        # shellcheck disable=SC2034
+        PROJECT_DOCROOT=""
+    fi
+
+    # shellcheck disable=SC2034
+    COMPOSE_FILE="$ENV_DIRECTORY/docker-compose.yml"
+    USER=$(whoami)
+
+    if [[ "$LANGUAGE" == 'php' ]]; then
+
+        if [[ "$SPEC_VERSION" == "default" ]]; then
+          PHP_VERSION="7.1"
+        else
+          # shellcheck disable=SC2034
+          PHP_VERSION=$SPEC_VERSION
+        fi
+
+        # shellcheck disable=SC1090
+        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/php.yml" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_NAME#$PROJECT_NAME#g"       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PHP_VERSION#$PHP_VERSION#g"         "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_PATH#$PROJECT_PATH#g"       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_BASE_DIRECTORY#$BASE_DIRECTORY#g"   "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_USER#$USER#g"                       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_DOCROOT#$PROJECT_DOCROOT#g" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        rm -f "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml.bak"
+    elif [[ "$LANGUAGE" == 'ruby' ]]; then
+        if [[ "$SPEC_VERSION" == "default" ]]; then
+            RUBY_VERSION="2.3"
+        else
+            # shellcheck disable=SC2034
+            RUBY_VERSION=$SPEC_VERSION
+        fi
+
+        # shellcheck disable=SC1090
+        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/ruby.yml" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+    fi
+    echo "Devenv has been installed for your $PROJECT_NAME application. You can start the application with 'devenv start'"
+}
+
+function list_applications() {
+    echo "The following are all currently configured devenv applications:"
+    grep "Start Application" < "$ENV_DIRECTORY/docker-compose.yml" | while IFS= read -r LINE; do
+        APP=$(echo "$LINE"| cut -d ' ' -f 7)
+        echo "    - $APP"
+    done
+}
+
+function new_application() {
+    ## Creating our first environment
+    echo "Devenv runs using applications. Each application uses a different container."
+    echo "What is the project name of the application you would like to create first?"
+    read -r PROJECT_NAME
+
+    echo ""
+
+    echo "What is the full path to the codebase for this project?"
+    # shellcheck disable=SC2034
+    read -r PROJECT_PATH
+
+    echo ""
+
+    echo "If your application does not use its base directory as its document root"
+    echo "please provide a relative document root (such as public or web) now: [default: none]"
+    # shellcheck disable=SC2034
+    read -r PROJECT_DOCROOT
+
+    # shellcheck disable=SC2034
+    COMPOSE_FILE="$ENV_DIRECTORY/docker-compose.yml"
+
+    ## Updating the PROJECT_NAME variables
+    USER=$(whoami)
+
+    echo ""
+
+    echo "Devenv will eventually support a number of different languages. For now"
+    echo "we only support PHP. Select the language you would like to enable for"
+    echo "your project: "
+    echo "   1. PHP"
+    echo "   2. Ruby"
+    read -r LANGUAGE_SUPPORT
+
+    ## Installing PHP-specific portions of the docker-compose.yml
+    if [[ "$LANGUAGE_SUPPORT" == '1' ]]; then
+        echo "What PHP version would you like to enable? You will be able to choose multiple times."
+        echo "1. PHP 7.1 [our infrastructure default]"
+        echo "2. PHP 7.2"
+        echo "3. PHP 7.3"
+        read -r ENABLE_PHP_VERSION
+        echo ""
+
+        if [[ $ENABLE_PHP_VERSION == "1" ]]; then
+            # shellcheck disable=SC2034
+            PHP_VERSION="7.1"
+        fi
+
+        if [[ $ENABLE_PHP_VERSION == "2" ]]; then
+            # shellcheck disable=SC2034
+            PHP_VERSION="7.2"
+        fi
+
+        if [[ $ENABLE_PHP_VERSION == "3" ]]; then
+            # shellcheck disable=SC2034
+            PHP_VERSION="7.3"
+        fi
+
+        # shellcheck disable=SC1090
+        source "$TEMPLATES_DIRECTORY/compose_parts/applications/php.sh"
+    elif [[ "$LANGUAGE_SUPPORT" == '2' ]]; then
+      echo "What PHP version would you like to enable? You will be able to choose multiple times."
+      echo "1. Ruby 2.3"
+      echo "2. Ruby 2.4"
+      echo "3. Ruby 2.5"
+      read -r ENABLE_PHP_VERSION
+      echo ""
+
+      if [[ $ENABLE_PHP_VERSION == "1" ]]; then
+          # shellcheck disable=SC2034
+          RUBY_VERSION="2.3"
+      fi
+
+      if [[ $ENABLE_PHP_VERSION == "2" ]]; then
+          # shellcheck disable=SC2034
+          RUBY_VERSION="2.4"
+      fi
+
+      if [[ $ENABLE_PHP_VERSION == "3" ]]; then
+          # shellcheck disable=SC2034
+          RUBY_VERSION="2.5"
+      fi
+
+      # shellcheck disable=SC1090
+      source "$TEMPLATES_DIRECTORY/compose_parts/applications/ruby.sh"
+    fi
+
+    echo "Devenv has been installed for your $PROJECT_NAME application. You can start the environment with 'devenv start $PROJECT_NAME'"
+}
+
+function port_check() {
+    PORT=$1
+    CHECK_RESULTS=$(docker ps -q --filter publish="$PORT")
+
+    if [[ "$CHECK_RESULTS" == "" ]]; then
+        false
+    else
+        true
+    fi
+}
+
+function start() {
+    ACTIVE_PATH="$BASE_DIRECTORY/environment/active"
+    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
+    COMPOSE_FILE="$ACTIVE_PATH/docker-compose.yml"
+    if [[ ! -f "$COMPOSE_FILE" ]]; then
+
+        echo "Starting Devenv."
+        cd "$ACTIVE_PATH" || exit 1
+
+        cat "$BASE_DIRECTORY/templates/compose_parts/header.yml" > "$COMPOSE_FILE"
+        cat "$BASE_DIRECTORY/templates/compose_parts/ingress/nginx.yml" >> "$COMPOSE_FILE"
+
+        PART_COUNT=$(find "$ENABLED_PATH/" -type f | grep -v gitkeep| wc -l)
+
+        if [ "$PART_COUNT" -gt 0 ]; then
+            for PART in "$ENABLED_PATH"/*.yml; do
+                cat "$PART" >> "$COMPOSE_FILE"
+            done
+        fi
+
+        "$COMPOSE_BINARY" up -d
+    else
+        echo "Devenv is already running. If it's not working, try 'devenv cleanup'"
+    fi
+}
+
+function status() {
+    docker ps --filter name="devenv*" --format '{{.Names}}\t{{.Status}}' | awk '{print $1 " " $2}' > /tmp/docker-status.tmp
+    while read -r container status; do
+        if [[ $status == 'Restarting' ]]; then
+            echo -e "$container: \\033[33mfailed - restart loop\\033[0m"
+        elif [[ $status == 'Up' ]]; then
+            echo -e "$container: \\033[32mrunning\\033[0m"
+        else
+            echo -e "$container: \\033[31mstopped\\033[0m"
+        fi
+    done < "/tmp/docker-status.tmp"
+    rm /tmp/docker-status.tmp
+}
+
+function stop() {
+    ACTIVE_PATH="$BASE_DIRECTORY/environment/active"
+    COMPOSE_FILE="$ACTIVE_PATH/docker-compose.yml"
+    if [[ -f "$COMPOSE_FILE" ]]; then
+
+        echo "Stopping Devenv."
+        cd "$ACTIVE_PATH" || exit 1
+
+        "$COMPOSE_BINARY" down
+        rm -f "$COMPOSE_FILE"
+    else
+        echo "Devenv is not running. If some devenv components still exist, try 'devenv cleanup'."
+    fi
+}
+
+function updateself() {
+    echo "Updating DevEnv application."
+
+    PREVIOUS_VERSION=$(cat "$BASE_DIRECTORY/version.txt")
+    cd "$BASE_DIRECTORY" || exit 1
+    git fetch --quiet
+
+    if [[ "$TARGET" == "--development" ]]; then
+        git checkout v2.0.0-dev --quiet --force
+        git pull --quiet
+    else
+        TARGET_VERSION=$(git tag --list | tail -n 1)
+
+        if [[ $PREVIOUS_VERSION != "$TARGET_VERSION" ]]; then
+            echo "Devenv $TARGET_VERSION is available. Would you like to update now? [y/N]"
+            read -r PROCEED_UPDATE
+
+            if [[ "$PROCEED_UPDATE" == "y" || "$PROCEED_UPDATE" == "Y" ]]; then
+                git checkout "$NEW_VERSION" --quiet --force
+
+                UPDATED_VERSION=$(cat "$BASE_DIRECTORY/version.txt")
+
+                if [[ "$TARGET_VERSION" == "$UPDATED_VERSION" ]]; then
+                    echo "DevEnv has been successfully updated to $TARGET_VERSION"
+                else
+                    echo -e "\\033[31mDevEnv failed to updated from $PREVIOUS_VERSION to $TARGET_VERSION. $UPDATED_VERSION identified.\\033[0m"
+                fi
+            fi
+        fi
+    fi
+}
+
+function update() {
+    echo "Updating devenv images."
+
+    for CATEGORY in "$IMAGES_DIRECTORY/"*; do
+        CATEGORY_NAME=$(basename "$CATEGORY")
+        for IMAGE in "$IMAGES_DIRECTORY/$CATEGORY_NAME"/*; do
+            IMAGE_NAME=$(basename "$IMAGE")
+            # shellcheck disable=SC1090
+            source "$IMAGES_DIRECTORY/$CATEGORY_NAME/$IMAGE_NAME"
+
+            if [[ "$DOCKER_REGISTRY" != '' ]]; then
+                # shellcheck disable=SC2086 disable=SC2046
+                echo "$GITLAB_TOKEN" | docker login -u $(id -un) --password-stdin $DOCKER_REGISTRY
+            fi
+            "$DOCKER_BINARY" pull "$DOCKER_REGISTRY$DOCKER_NAMESPACE$CATEGORY_NAME:$IMAGE_NAME"
+        done
+    done
+}
+
+function validate_target() {
+    if [[ "$COMMAND" == 'delete' ||
+         "$COMMAND" == 'relocate' ||
+         "$COMMAND" == 'connect' ]]; then
+        if [[ "$TARGET" != "" ]]; then
+            true
+        else
+            echo "The command \"$COMMAND\" requires an application as a target, in the format:"
+            echo "    devenv $COMMAND my-app"
+            echo ""
+            list_applications
+            exit 1
+        fi
+    fi
+}
+
+function view_logs() {
+    echo "Viewing the last 50 lines of logs from each container."
+    cd "$ENV_DIRECTORY" || exit 1
+    "$COMPOSE_BINARY" logs --tail 50
+}
+
+VERSION="v0.1.0-alpha"
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    USER_ACCOUNT=$(id -un)
+
+    SED_BINARY="gsed"
+    READLINK_BINARY="greadlink"
+    BASE_DIRECTORY="/Users/$USER_ACCOUNT/.devenv"
+else
+    # shellcheck disable=SC2034
+    SED_BINARY='sed'
+    # shellcheck disable=SC2034
+    READLINK_BINARY='readlink'
+    BASE_DIRECTORY="$HOME/.devenv"
+fi
+
+BASE_DIRECTORY="$HOME/.devenv"
+ENV_DIRECTORY="$BASE_DIRECTORY/environment"
+IMAGES_DIRECTORY="$BASE_DIRECTORY/images"
+TEMPLATES_DIRECTORY="$BASE_DIRECTORY/templates"
+
+COMPOSE_BINARY=$(command -v docker-compose)
+DOCKER_BINARY=$(command -v docker)
+
+if [[ $1 == 'version' ]]; then
+    echo $VERSION
+    exit 0
+fi
+
+HAS_PERMISSIONS='false'
+for group in $(groups); do
+    if [[ "$group" == "docker" || "$group" == "root"  ]]; then
+      HAS_PERMISSIONS='true'
+    fi
+done
+
+
+if [[ "$HAS_PERMISSIONS" == 'true' || -f "$BASE_DIRECTORY/.group-override" ]]; then
+    if [[ "$#" != 0 ]]; then
+        COMMAND=$1
+        TARGET=$2
+        shift 1
+
+        validate_target
+
+        if [[ $COMMAND == "start" ]]; then
+            start
+        elif [[ $COMMAND == "stop" ]]; then
+            stop
+        elif [[ $COMMAND == "restart" ]]; then
+            stop
+            start
+        elif [[ "$COMMAND" == "enable" ]]; then
+            ENABLE_VERSION=$2
+            enable
+        elif [[ $COMMAND == "update" ]]; then
+            stop
+            update
+            start
+        elif [[ $COMMAND == "updateself" || $COMMAND == "selfupdate" ]]; then
+            stop
+            updateself
+            start
+        elif [[ "$COMMAND" == "new" ]]; then
+            new_application
+        elif [[ "$COMMAND" == "launch" ]]; then
+            launch
+        elif [[ $COMMAND == "status" ]]; then
+            status
+        elif [[ "$COMMAND" == "cleanup" ]]; then
+            cleanup
+        elif [[ "$COMMAND" == "connect" && $# == 2 ]]; then
+            "$DOCKER_BINARY" exec -it "devenv-$TARGET" /bin/bash
+        elif [[ "$COMMAND" == "connect" && $# == 1 ]]; then
+            echo "You must include the application name in the command. Example:"
+            echo "    devenv connect mywebapp"
+        elif [[ "$COMMAND" == "list" ]]; then
+            list_applications
+        elif [[ "$COMMAND" ==  "logs" ]]; then
+            view_logs
+        elif [[ "$COMMAND" == "delete" ]]; then
+            delete_application
+        elif [[ "$COMMAND" == "relocate" ]]; then
+            relocate
+        elif [[ "$COMMAND" == "help" ]]; then
+            display_help
+            exit 0
+        elif [[ "$COMMAND" == "diagnostics" ]]; then
+            diagnostics
+        elif [[ "$COMMAND" == "composer" ]]; then
+            composer "$@"
+        else
+            display_help
+            exit 1
+        fi
+    else
+        display_help
+        exit 1
+    fi
+else
+    echo "Your user is not in the 'docker' group, so may not be able to run"
+    echo "Docker commands. This is the only time this warning will show, so"
+    echo "continuing to run Devenv if you have not properly installed Docker"
+    echo "will cause a substantial number of errors."
+    echo ""
+    echo "If you have not yet installed docker please read this repository's README."
+    echo ""
+    echo "If you need help contact Josh."
+    touch "$BASE_DIRECTORY/.group-override"
+    exit 1
+fi

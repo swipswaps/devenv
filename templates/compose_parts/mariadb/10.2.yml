@@ -1,0 +1,14 @@
+  mariadb:
+    image: mariadb:10.2
+    container_name: devenv-mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: devenv
+      MYSQL_USER: devenv
+      MYSQL_PASSWORD: devenv
+    volumes:
+      - "devenv-mariadb-data:/var/lib/mysql"
+    ports:
+      - "3306:3306"
+    networks:
+      - devenv-network

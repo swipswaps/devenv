@@ -1,0 +1,126 @@
+#!/bin/bash
+# --------------------------------------------------
+#
+# Package: devenv
+# Author: Josh Grancell <josh@joshgrancell.com>
+# Description: Docker-based web development platform
+# File Version: v0.1.0
+#
+# --------------------------------------------------
+VERSION="v0.1.0-alpha"
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    USER_ACCOUNT=$(id -un)
+
+    SED_BINARY="gsed"
+    READLINK_BINARY="greadlink"
+    BASE_DIRECTORY="/Users/$USER_ACCOUNT/.devenv"
+else
+    # shellcheck disable=SC2034
+    SED_BINARY='sed'
+    # shellcheck disable=SC2034
+    READLINK_BINARY='readlink'
+    BASE_DIRECTORY="$HOME/.devenv"
+fi
+
+BASE_DIRECTORY="$HOME/.devenv"
+# shellcheck disable=SC2034
+ENV_DIRECTORY="$BASE_DIRECTORY/environment"
+# shellcheck disable=SC2034
+IMAGES_DIRECTORY="$BASE_DIRECTORY/images"
+# shellcheck disable=SC2034
+TEMPLATES_DIRECTORY="$BASE_DIRECTORY/templates"
+
+# shellcheck disable=SC2034
+COMPOSE_BINARY=$(command -v docker-compose)
+# shellcheck disable=SC2034
+DOCKER_BINARY=$(command -v docker)
+
+if [[ $1 == 'version' ]]; then
+    echo $VERSION
+    exit 0
+fi
+
+## Verifying that the user is in the 'docker' group
+HAS_PERMISSIONS='false'
+for group in $(groups); do
+    if [[ "$group" == "docker" || "$group" == "root"  ]]; then
+      HAS_PERMISSIONS='true'
+    fi
+done
+
+
+if [[ "$HAS_PERMISSIONS" == 'true' || -f "$BASE_DIRECTORY/.group-override" ]]; then
+    if [[ "$#" != 0 ]]; then
+        COMMAND=$1
+        TARGET=$2
+        shift 1
+
+        validate_target
+
+        if [[ $COMMAND == "start" ]]; then
+            start
+        elif [[ $COMMAND == "stop" ]]; then
+            stop
+        elif [[ $COMMAND == "restart" ]]; then
+            stop
+            start
+        elif [[ "$COMMAND" == "enable" ]]; then
+            ENABLE_VERSION=$2
+            enable
+        elif [[ $COMMAND == "update" ]]; then
+            stop
+            update
+            start
+        elif [[ $COMMAND == "updateself" || $COMMAND == "selfupdate" ]]; then
+            stop
+            updateself
+            start
+        elif [[ "$COMMAND" == "new" ]]; then
+            new_application
+        elif [[ "$COMMAND" == "launch" ]]; then
+            launch
+        elif [[ $COMMAND == "status" ]]; then
+            status
+        elif [[ "$COMMAND" == "cleanup" ]]; then
+            cleanup
+        elif [[ "$COMMAND" == "connect" && $# == 2 ]]; then
+            "$DOCKER_BINARY" exec -it "devenv-$TARGET" /bin/bash
+        elif [[ "$COMMAND" == "connect" && $# == 1 ]]; then
+            echo "You must include the application name in the command. Example:"
+            echo "    devenv connect mywebapp"
+        elif [[ "$COMMAND" == "list" ]]; then
+            list_applications
+        elif [[ "$COMMAND" ==  "logs" ]]; then
+            view_logs
+        elif [[ "$COMMAND" == "delete" ]]; then
+            delete_application
+        elif [[ "$COMMAND" == "relocate" ]]; then
+            relocate
+        elif [[ "$COMMAND" == "help" ]]; then
+            display_help
+            exit 0
+        elif [[ "$COMMAND" == "diagnostics" ]]; then
+            diagnostics
+        elif [[ "$COMMAND" == "composer" ]]; then
+            composer "$@"
+        else
+            display_help
+            exit 1
+        fi
+    else
+        display_help
+        exit 1
+    fi
+else
+    echo "Your user is not in the 'docker' group, so may not be able to run"
+    echo "Docker commands. This is the only time this warning will show, so"
+    echo "continuing to run Devenv if you have not properly installed Docker"
+    echo "will cause a substantial number of errors."
+    echo ""
+    echo "If you have not yet installed docker please read this repository's README."
+    echo ""
+    echo "If you need help contact Josh."
+    touch "$BASE_DIRECTORY/.group-override"
+    exit 1
+fi

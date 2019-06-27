@@ -1,0 +1,10 @@
+  postgres:
+    image: postgres:11
+    container_name: devenv-postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: devenv
+    ports:
+      - "5432:5432"
+    networks:
+      - devenv-network

@@ -1,0 +1,11 @@
+  phpmyadmin:
+    image: devenvapp/phpmyadmin:latest
+    depends_on:
+      - mariadb
+    container_name: devenv-phpmyadmin
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - devenv-network

@@ -1,0 +1,45 @@
+language: generic
+
+env:
+  CI_PIPELINE="travis"
+
+os:
+  - osx
+
+stages:
+  - build
+  - validate
+  - syntax
+  - test
+
+before_script:
+  - brew install gnu-sed
+  - brew install coreutils || true
+
+jobs:
+  include:
+    - name: Build
+      stage: build
+      script:
+        - ./installer.sh --unattended --development --local
+        - ./tests/installer_test.sh
+    - name: Validate
+      stage: validate
+      script:
+        - ./installer.sh --unattended --development --local
+        - devenv diagnostics || echo "Caught Docker Group notice"
+        - devenv diagnostics
+        - devenv launch .
+    - name: Shellcheck
+      stage: syntax
+      script:
+        - brew install shellcheck
+        - shellcheck -x ./installer.sh
+        - shellcheck -x ./src/*.sh
+        - shellcheck -x ./bin/devenv
+    - name: Unit Test
+      stage: test
+      before_script:
+        - curl -L "https://github.com/kward/shunit2/archive/v2.1.7.tar.gz" | tar zx
+      script:
+        - bash tests/unittest.sh

@@ -1,0 +1,9 @@
+  ingress:
+    image: devenvapp/ingress:nginx
+    container_name: devenv-ingress
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - devenv-network
