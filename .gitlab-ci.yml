@@ -39,6 +39,24 @@ Ubuntu 18.04 - Build:
     - /bin/bash installer.sh --unattended --development --local
     - /bin/bash tests/installer_test.sh
 
+Fedora 30 - Build:
+  image: fedora:30
+  stage: build
+  before_script:
+    - dnf -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - /bin/bash tests/installer_test.sh
+
+Fedora 29 - Build:
+  image: fedora:29
+  stage: build
+  before_script:
+    - dnf -y install rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - /bin/bash tests/installer_test.sh
+
 Fedora 28 - Build:
   image: fedora:28
   stage: build
@@ -89,6 +107,26 @@ Ubuntu 18.04 - Test:
     - devenv diagnostics
     - devenv launch .
 
+Fedora 30 - Test:
+  image: fedora:30
+  stage: validate
+  before_script:
+    - dnf install -y rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - devenv diagnostics
+    - devenv launch .
+
+Fedora 29 - Test:
+  image: fedora:29
+  stage: validate
+  before_script:
+    - dnf install -y rsync git
+  script:
+    - /bin/bash installer.sh --unattended --development --local
+    - devenv diagnostics
+    - devenv launch .
+
 Fedora 28 - Test:
   image: fedora:28
   stage: validate
@@ -110,17 +148,14 @@ Fedora 27 - Test:
     - devenv launch .
 
 ## Syntax Stage
-
 Syntax Check:
   image: koalaman/shellcheck-alpine:latest
   stage: syntax
   script:
     - shellcheck -x ./installer.sh
     - shellcheck -x ./bin/devenv
-    - shellcheck -x ./src/*.sh
 
 ## Unit Testing Stage
-
 Unit Testing:
   stage: test
   before_script:
