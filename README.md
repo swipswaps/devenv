@@ -2,8 +2,6 @@
 
 Docker-based web application development application, written in Bash.
 
-
-
 #### Table of Contents
 
 1. [Description](#description)
@@ -17,7 +15,7 @@ Docker-based web application development application, written in Bash.
 
 ## Current Build Status
 
-[![Release Version](https://img.shields.io/badge/stable-v1.0.0-blue.svg)](https://gitlab.com/devenv-app/devenv/tags/) [![Release Version](https://img.shields.io/badge/development-v1.1.0--alpha--1-orange.svg)](https://gitlab.com/devenv-app/devenv/tags/)
+[![Release Version](https://img.shields.io/badge/development-v0.1.0--alpha-orange.svg)](https://gitlab.com/devenv-app/devenv/tags/)
 
 
 |   OS     |                                                                    Status                                                                    |
@@ -29,8 +27,6 @@ Docker-based web application development application, written in Bash.
 \* Windows builds are only functional on Windows 10 using the Ubuntu or Fedora Linux subsystems.
 
 ## Description
-
-*TODO:* REPLACE THIS SECTION.
 
 Devenv is a web application development environment, written in Bash and using Docker.
 Devenv provides lightweight environments to run your applications on during development,
@@ -46,13 +42,6 @@ All Devenv images are updated weekly with OS, package, and language updates.
 All Devenv projects include a valid, browser-trusted SSL certificate that covers all
 projects under `*.appenv.dev`. Devenv can be configured to use other root domains,
 however we do not support this.
-
-All Devenv Docker images are as faithful of a representation as possible of our
-current production environment, while still allowing developers to use their o
-perating system of choice. All images include:
-
-* CentOS 7
-* Apache 2.4 with our default production configuration.
 
 We provide a number of different language-specific images, to allow for compatibility testing with potential future language version updates.
 Please see the [Supported Languages](#supported-languages) section below for more information about the different languages and language versions we currently package
