@@ -112,7 +112,7 @@ function enable() {
         else
             echo "The specified version for $TARGET ($ENABLE_VERSION) is not supported."
             echo "Supported versions are:"
-            for FILE in $(ls "$TARGET_PATH" | grep yml | $SED_BINARY 's/.yml//g'); do
+            for FILE in $(find "$TARGET_PATH" -type f -name "*.yml" | $SED_BINARY 's/.yml//g'); do
                 echo "  - $FILE"
             done
             exit 1
@@ -346,7 +346,7 @@ function start() {
         cat "$BASE_DIRECTORY/templates/compose_parts/header.yml" > "$COMPOSE_FILE"
         cat "$BASE_DIRECTORY/templates/compose_parts/ingress/nginx.yml" >> "$COMPOSE_FILE"
 
-        PART_COUNT=$(find "$ENABLED_PATH/" -type f | grep -v gitkeep| wc -l)
+        PART_COUNT=$(find "$ENABLED_PATH/" -type f -name "*.yml" | wc -l)
 
         if [ "$PART_COUNT" -gt 0 ]; then
             for PART in "$ENABLED_PATH"/*.yml; do

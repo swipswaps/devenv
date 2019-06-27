@@ -17,7 +17,7 @@ function enable() {
         else
             echo "The specified version for $TARGET ($ENABLE_VERSION) is not supported."
             echo "Supported versions are:"
-            for FILE in $(ls "$TARGET_PATH" | grep yml | $SED_BINARY 's/.yml//g'); do
+            for FILE in $(find "$TARGET_PATH" -type f -name "*.yml" | $SED_BINARY 's/.yml//g'); do
                 echo "  - $FILE"
             done
             exit 1

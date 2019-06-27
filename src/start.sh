@@ -19,7 +19,7 @@ function start() {
         cat "$BASE_DIRECTORY/templates/compose_parts/header.yml" > "$COMPOSE_FILE"
         cat "$BASE_DIRECTORY/templates/compose_parts/ingress/nginx.yml" >> "$COMPOSE_FILE"
 
-        PART_COUNT=$(find "$ENABLED_PATH/" -type f | grep -v gitkeep| wc -l)
+        PART_COUNT=$(find "$ENABLED_PATH/" -type f -name "*.yml" | wc -l)
 
         if [ "$PART_COUNT" -gt 0 ]; then
             for PART in "$ENABLED_PATH"/*.yml; do
