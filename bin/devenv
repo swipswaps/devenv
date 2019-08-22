@@ -4,7 +4,7 @@
 # Package: Devenv
 # Author: Josh Grancell <josh@joshgrancell.com>
 # Description: Docker-based web development platform
-# Version: v0.1.0-alpha
+# Version: v0.1.0
 #
 # --------------------------------------------------
 
@@ -26,8 +26,9 @@ function composer() {
 
 function delete_application() {
     ENABLED_PROJECTS_DIRECTORY="$BASE_DIRECTORY/environment/enabled"
-    if [ -f "$ENABLED_PROJECTS_DIRECTORY/$TARGET" ]; then
-        rm "$ENABLED_PROJECTS_DIRECTORY/$TARGET"
+    if [ -f "$ENABLED_PROJECTS_DIRECTORY/$TARGET.yml" ]; then
+        rm "$ENABLED_PROJECTS_DIRECTORY/$TARGET.yml"
+        echo "Application $TARGET deleted from Devenv."
     else
         echo "The application $TARGET is not enabled in Devenv."
     fi
@@ -227,11 +228,11 @@ function launch() {
 function list_applications() {
     echo "The following are all currently configured devenv applications:"
     while IFS= read -r -d '' FILE; do
-        if [[ "$APP" != ".gitkeep" ]]; then
-            APP=$(basename "$FILE" | cut -d. -f1)
+        if grep -q "Start Application" "$FILE"; then
+            APP=$(cat "$FILE" | grep "Start Application" | sed 's/  ## Start Application - //g')
             echo "    - $APP"
         fi
-    done <  <(find "$ENABLED_PROJECTS_DIRECTORY" -type f -print0)
+    done <  <(find "$ENABLED_PROJECTS_DIRECTORY" -type f -print0 | sort -z)
 }
 
 function new_application() {
@@ -455,7 +456,7 @@ function view_logs() {
     "$COMPOSE_BINARY" logs --tail 50
 }
 
-VERSION="v0.1.0-alpha"
+VERSION="v0.1.0"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     USER_ACCOUNT=$(id -un)
