@@ -9,8 +9,10 @@
 # --------------------------------------------------
 function list_applications() {
     echo "The following are all currently configured devenv applications:"
-    for FILE in "$ACTIVE_DIRECTORY"/*; do
-        APP=$(cut -d. -f1 <<< "$FILE")
-        echo "    - $APP"
-    done
+    while IFS= read -r -d '' FILE; do
+        if [[ "$APP" != ".gitkeep" ]]; then
+            APP=$(basename "$FILE" | cut -d. -f1)
+            echo "    - $APP"
+        fi
+    done <  <(find "$ENABLED_PROJECTS_DIRECTORY" -type f -print0)
 }
