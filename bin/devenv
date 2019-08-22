@@ -25,9 +25,9 @@ function composer() {
 }
 
 function delete_application() {
-    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
-    if [ -f "$ENABLED_PATH/$TARGET" ]; then
-        rm "$ENABLED_PATH/$TARGET"
+    ENABLED_PROJECTS_DIRECTORY="$BASE_DIRECTORY/environment/enabled"
+    if [ -f "$ENABLED_PROJECTS_DIRECTORY/$TARGET" ]; then
+        rm "$ENABLED_PROJECTS_DIRECTORY/$TARGET"
     else
         echo "The application $TARGET is not enabled in Devenv."
     fi
@@ -103,12 +103,11 @@ function display_help() {
 }
 
 function enable() {
-    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
     TARGET_PATH="$BASE_DIRECTORY/templates/compose_parts/$TARGET"
 
     if [[ -d "$TARGET_PATH" ]]; then
         if [[ -f "$TARGET_PATH/$ENABLE_VERSION.yml" ]]; then
-            cp "$TARGET_PATH/$ENABLE_VERSION.yml" "$ENABLED_PATH/"
+            cp "$TARGET_PATH/$ENABLE_VERSION.yml" "$ENABLED_PROJECTS_DIRECTORY/"
         else
             echo "The specified version for $TARGET ($ENABLE_VERSION) is not supported."
             echo "Supported versions are:"
@@ -140,7 +139,7 @@ function launch() {
 
     echo "Provisioning the project $PROJECT_NAME with the codebase from $PROJECT_PATH."
 
-    if [[ -f "$ENV_PATH/enabled/$PROJECT_NAME.yml" ]]; then
+    if [[ -f "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml" ]]; then
         echo -e '\\033[31mAn application already exists with that name.\\033[0m'
         exit 1
     fi
@@ -203,14 +202,14 @@ function launch() {
         fi
 
         # shellcheck disable=SC1090
-        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/php.yml" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PROJECT_NAME#$PROJECT_NAME#g"       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PHP_VERSION#$PHP_VERSION#g"         "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PROJECT_PATH#$PROJECT_PATH#g"       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_BASE_DIRECTORY#$BASE_DIRECTORY#g"   "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_USER#$USER#g"                       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PROJECT_DOCROOT#$PROJECT_DOCROOT#g" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        rm -f "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml.bak"
+        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/php.yml" "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_NAME#$PROJECT_NAME#g"       "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PHP_VERSION#$PHP_VERSION#g"         "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_PATH#$PROJECT_PATH#g"       "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_BASE_DIRECTORY#$BASE_DIRECTORY#g"   "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_USER#$USER#g"                       "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_DOCROOT#$PROJECT_DOCROOT#g" "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        rm -f "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml.bak"
     elif [[ "$LANGUAGE" == 'ruby' ]]; then
         if [[ "$SPEC_VERSION" == "default" ]]; then
             RUBY_VERSION="2.3"
@@ -220,14 +219,14 @@ function launch() {
         fi
 
         # shellcheck disable=SC1090
-        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/ruby.yml" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/ruby.yml" "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
     fi
     echo "Devenv has been installed for your $PROJECT_NAME application. You can start the application with 'devenv start'"
 }
 
 function list_applications() {
     echo "The following are all currently configured devenv applications:"
-    grep "Start Application" < "$ENV_DIRECTORY/docker-compose.yml" | while IFS= read -r LINE; do
+    grep "Start Application" < "$COMPOSE_FILE" | while IFS= read -r LINE; do
         APP=$(echo "$LINE"| cut -d ' ' -f 7)
         echo "    - $APP"
     done
@@ -251,9 +250,6 @@ function new_application() {
     echo "please provide a relative document root (such as public or web) now: [default: none]"
     # shellcheck disable=SC2034
     read -r PROJECT_DOCROOT
-
-    # shellcheck disable=SC2034
-    COMPOSE_FILE="$ENV_DIRECTORY/docker-compose.yml"
 
     ## Updating the PROJECT_NAME variables
     USER=$(whoami)
@@ -335,21 +331,18 @@ function port_check() {
 }
 
 function start() {
-    ACTIVE_PATH="$BASE_DIRECTORY/environment/active"
-    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
-    COMPOSE_FILE="$ACTIVE_PATH/docker-compose.yml"
     if [[ ! -f "$COMPOSE_FILE" ]]; then
 
         echo "Starting Devenv."
-        cd "$ACTIVE_PATH" || exit 1
+        cd "$ACTIVE_DIRECTORY" || exit 1
 
         cat "$BASE_DIRECTORY/templates/compose_parts/header.yml" > "$COMPOSE_FILE"
         cat "$BASE_DIRECTORY/templates/compose_parts/ingress/nginx.yml" >> "$COMPOSE_FILE"
 
-        PART_COUNT=$(find "$ENABLED_PATH/" -type f -name "*.yml" | wc -l)
+        PART_COUNT=$(find "$ENABLED_PROJECTS_DIRECTORY/" -type f -name "*.yml" | wc -l)
 
         if [ "$PART_COUNT" -gt 0 ]; then
-            for PART in "$ENABLED_PATH"/*.yml; do
+            for PART in "$ENABLED_PROJECTS_DIRECTORY"/*.yml; do
                 cat "$PART" >> "$COMPOSE_FILE"
             done
         fi
@@ -375,12 +368,10 @@ function status() {
 }
 
 function stop() {
-    ACTIVE_PATH="$BASE_DIRECTORY/environment/active"
-    COMPOSE_FILE="$ACTIVE_PATH/docker-compose.yml"
     if [[ -f "$COMPOSE_FILE" ]]; then
 
         echo "Stopping Devenv."
-        cd "$ACTIVE_PATH" || exit 1
+        cd "$ACTIVE_DIRECTORY" || exit 1
 
         "$COMPOSE_BINARY" down
         rm -f "$COMPOSE_FILE"
@@ -397,7 +388,7 @@ function updateself() {
     git fetch --quiet
 
     if [[ "$TARGET" == "--development" ]]; then
-        git checkout v2.0.0-dev --quiet --force
+        git checkout development --quiet --force
         git pull --quiet
     else
         TARGET_VERSION=$(git tag --list | tail -n 1)
@@ -458,7 +449,7 @@ function validate_target() {
 
 function view_logs() {
     echo "Viewing the last 50 lines of logs from each container."
-    cd "$ENV_DIRECTORY" || exit 1
+    cd "$ACTIVE_DIRECTORY" || exit 1
     "$COMPOSE_BINARY" logs --tail 50
 }
 
@@ -479,9 +470,15 @@ else
 fi
 
 BASE_DIRECTORY="$HOME/.devenv"
+
 ENV_DIRECTORY="$BASE_DIRECTORY/environment"
+ACTIVE_DIRECTORY="$ENV_DIRECTORY/active"
+ENABLED_PROJECTS_DIRECTORY="$ENV_DIRECTORY/enabled"
+
 IMAGES_DIRECTORY="$BASE_DIRECTORY/images"
 TEMPLATES_DIRECTORY="$BASE_DIRECTORY/templates"
+
+COMPOSE_FILE="$ACTIVE_DIRECTORY/docker-compose.yml"
 
 COMPOSE_BINARY=$(command -v docker-compose)
 DOCKER_BINARY=$(command -v docker)

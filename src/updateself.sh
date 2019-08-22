@@ -15,7 +15,7 @@ function updateself() {
     git fetch --quiet
 
     if [[ "$TARGET" == "--development" ]]; then
-        git checkout v2.0.0-dev --quiet --force
+        git checkout development --quiet --force
         git pull --quiet
     else
         TARGET_VERSION=$(git tag --list | tail -n 1)

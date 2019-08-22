@@ -26,9 +26,6 @@ function new_application() {
     # shellcheck disable=SC2034
     read -r PROJECT_DOCROOT
 
-    # shellcheck disable=SC2034
-    COMPOSE_FILE="$ENV_DIRECTORY/docker-compose.yml"
-
     ## Updating the PROJECT_NAME variables
     USER=$(whoami)
 

@@ -8,12 +8,10 @@
 #
 # --------------------------------------------------
 function stop() {
-    ACTIVE_PATH="$BASE_DIRECTORY/environment/active"
-    COMPOSE_FILE="$ACTIVE_PATH/docker-compose.yml"
     if [[ -f "$COMPOSE_FILE" ]]; then
 
         echo "Stopping Devenv."
-        cd "$ACTIVE_PATH" || exit 1
+        cd "$ACTIVE_DIRECTORY" || exit 1
 
         "$COMPOSE_BINARY" down
         rm -f "$COMPOSE_FILE"

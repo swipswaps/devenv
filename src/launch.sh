@@ -21,7 +21,7 @@ function launch() {
 
     echo "Provisioning the project $PROJECT_NAME with the codebase from $PROJECT_PATH."
 
-    if [[ -f "$ENV_PATH/enabled/$PROJECT_NAME.yml" ]]; then
+    if [[ -f "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml" ]]; then
         echo -e '\\033[31mAn application already exists with that name.\\033[0m'
         exit 1
     fi
@@ -84,14 +84,14 @@ function launch() {
         fi
 
         # shellcheck disable=SC1090
-        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/php.yml" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PROJECT_NAME#$PROJECT_NAME#g"       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PHP_VERSION#$PHP_VERSION#g"         "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PROJECT_PATH#$PROJECT_PATH#g"       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_BASE_DIRECTORY#$BASE_DIRECTORY#g"   "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_USER#$USER#g"                       "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        sed -i.bak "s#SED_PROJECT_DOCROOT#$PROJECT_DOCROOT#g" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
-        rm -f "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml.bak"
+        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/php.yml" "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_NAME#$PROJECT_NAME#g"       "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PHP_VERSION#$PHP_VERSION#g"         "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_PATH#$PROJECT_PATH#g"       "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_BASE_DIRECTORY#$BASE_DIRECTORY#g"   "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_USER#$USER#g"                       "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        sed -i.bak "s#SED_PROJECT_DOCROOT#$PROJECT_DOCROOT#g" "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
+        rm -f "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml.bak"
     elif [[ "$LANGUAGE" == 'ruby' ]]; then
         if [[ "$SPEC_VERSION" == "default" ]]; then
             RUBY_VERSION="2.3"
@@ -101,7 +101,7 @@ function launch() {
         fi
 
         # shellcheck disable=SC1090
-        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/ruby.yml" "$ENV_DIRECTORY/enabled/$PROJECT_NAME.yml"
+        cp "$TEMPLATES_DIRECTORY/compose_parts/applications/ruby.yml" "$ENABLED_PROJECTS_DIRECTORY/$PROJECT_NAME.yml"
     fi
     echo "Devenv has been installed for your $PROJECT_NAME application. You can start the application with 'devenv start'"
 }

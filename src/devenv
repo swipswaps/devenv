@@ -24,12 +24,21 @@ else
 fi
 
 BASE_DIRECTORY="$HOME/.devenv"
+
 # shellcheck disable=SC2034
 ENV_DIRECTORY="$BASE_DIRECTORY/environment"
+# shellcheck disable=SC2034
+ACTIVE_DIRECTORY="$ENV_DIRECTORY/active"
+# shellcheck disable=SC2034
+ENABLED_PROJECTS_DIRECTORY="$ENV_DIRECTORY/enabled"
+
 # shellcheck disable=SC2034
 IMAGES_DIRECTORY="$BASE_DIRECTORY/images"
 # shellcheck disable=SC2034
 TEMPLATES_DIRECTORY="$BASE_DIRECTORY/templates"
+
+# shellcheck disable=SC2034
+COMPOSE_FILE="$ACTIVE_DIRECTORY/docker-compose.yml"
 
 # shellcheck disable=SC2034
 COMPOSE_BINARY=$(command -v docker-compose)

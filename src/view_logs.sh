@@ -9,6 +9,6 @@
 # --------------------------------------------------
 function view_logs() {
     echo "Viewing the last 50 lines of logs from each container."
-    cd "$ENV_DIRECTORY" || exit 1
+    cd "$ACTIVE_DIRECTORY" || exit 1
     "$COMPOSE_BINARY" logs --tail 50
 }

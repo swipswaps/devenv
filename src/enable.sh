@@ -8,12 +8,11 @@
 #
 # --------------------------------------------------
 function enable() {
-    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
     TARGET_PATH="$BASE_DIRECTORY/templates/compose_parts/$TARGET"
 
     if [[ -d "$TARGET_PATH" ]]; then
         if [[ -f "$TARGET_PATH/$ENABLE_VERSION.yml" ]]; then
-            cp "$TARGET_PATH/$ENABLE_VERSION.yml" "$ENABLED_PATH/"
+            cp "$TARGET_PATH/$ENABLE_VERSION.yml" "$ENABLED_PROJECTS_DIRECTORY/"
         else
             echo "The specified version for $TARGET ($ENABLE_VERSION) is not supported."
             echo "Supported versions are:"

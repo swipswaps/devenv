@@ -8,21 +8,18 @@
 #
 # --------------------------------------------------
 function start() {
-    ACTIVE_PATH="$BASE_DIRECTORY/environment/active"
-    ENABLED_PATH="$BASE_DIRECTORY/environment/enabled"
-    COMPOSE_FILE="$ACTIVE_PATH/docker-compose.yml"
     if [[ ! -f "$COMPOSE_FILE" ]]; then
 
         echo "Starting Devenv."
-        cd "$ACTIVE_PATH" || exit 1
+        cd "$ACTIVE_DIRECTORY" || exit 1
 
         cat "$BASE_DIRECTORY/templates/compose_parts/header.yml" > "$COMPOSE_FILE"
         cat "$BASE_DIRECTORY/templates/compose_parts/ingress/nginx.yml" >> "$COMPOSE_FILE"
 
-        PART_COUNT=$(find "$ENABLED_PATH/" -type f -name "*.yml" | wc -l)
+        PART_COUNT=$(find "$ENABLED_PROJECTS_DIRECTORY/" -type f -name "*.yml" | wc -l)
 
         if [ "$PART_COUNT" -gt 0 ]; then
-            for PART in "$ENABLED_PATH"/*.yml; do
+            for PART in "$ENABLED_PROJECTS_DIRECTORY"/*.yml; do
                 cat "$PART" >> "$COMPOSE_FILE"
             done
         fi
