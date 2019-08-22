@@ -9,8 +9,8 @@
 # --------------------------------------------------
 function list_applications() {
     echo "The following are all currently configured devenv applications:"
-    grep "Start Application" < "$COMPOSE_FILE" | while IFS= read -r LINE; do
-        APP=$(echo "$LINE"| cut -d ' ' -f 7)
+    for FILE in "$ACTIVE_DIRECTORY"/*; do
+        APP=$(cut -d. -f1 <<< "$FILE")
         echo "    - $APP"
     done
 }
