@@ -169,7 +169,8 @@ if [[ $PROCEED == "y" || "$PROCEED" == "yes" ]]; then
         echo "You can update Devenv at any time by running:"
         echo -e "    devenv updateself\\033[37m"
         echo ""
-        echo "If you have any questions please contact Josh via Slack."
+        echo "If you have any questions you can create a Github issue at"
+        echo "https://github.com/jgrancell/devenv/issues."
     else
         echo "Devenv was not able to clone down from Gitlab properly. Exiting."
         exit 1

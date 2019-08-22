@@ -178,7 +178,6 @@ Functionality:
     - apk add py-pip
     - pip install 'docker-compose'
     - /bin/bash ./installer.sh --unattended --development --local
-    - echo "$DOCKER_HUB_PASSWORD" | docker login -u ctsserviceworker --password-stdin
     - docker info
     - devenv diagnostics
   script:

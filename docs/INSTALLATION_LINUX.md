@@ -72,7 +72,7 @@ Installing Devenv is as simple as running the installer.
 
 It is almost always a very bad idea to simply curl a bash script into a pipe and
 run it from the internet, but you **can** do that if you'd like. You should **always**
-read through scripts you download from the internet, and this intaller is no exception.
+read through scripts you download from the internet, and this installer is no exception.
 
 1. Clone down the Devenv repository from `git@gitlab.com:devenv-app/devenv.git`
 2. Navigate into the repository directory via `cd devenv`

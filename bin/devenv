@@ -515,6 +515,7 @@ if [[ "$HAS_PERMISSIONS" == 'true' || -f "$BASE_DIRECTORY/.group-override" ]]; t
             stop
             start
         elif [[ "$COMMAND" == "enable" ]]; then
+            # shellcheck disable=SC2034
             ENABLE_VERSION=$2
             enable
         elif [[ $COMMAND == "update" ]]; then
@@ -567,9 +568,8 @@ else
     echo "continuing to run Devenv if you have not properly installed Docker"
     echo "will cause a substantial number of errors."
     echo ""
-    echo "If you have not yet installed docker please read this repository's README."
+    echo "If you have not yet installed docker please read this project's README."
     echo ""
-    echo "If you need help contact Josh."
     touch "$BASE_DIRECTORY/.group-override"
     exit 1
 fi
