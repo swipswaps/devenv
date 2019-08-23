@@ -137,9 +137,14 @@ fi
 echo "Test #4 - 'devenv start'"
 devenv start > "$TESTDIR/start-vanilla"
 
+sed -i.bak '/.*Pulling from/d' "$TESTDIR/start-vanilla"
+sed -i.bak '/^Digest: sha256:/d' "$TESTDIR/start-vanilla"
+sed -i.bak '/^Status: Downloaded/d' "$TESTDIR/start-vanilla"
+
 if [[ $(cat "$TESTDIR/start-vanilla") == "Starting Devenv." ]]; then
     echo "Test #4 - Success"
 else
+    echo "Showing output for Test 4:"
     cat "$TESTDIR/start-vanilla"
     echo "Test #4 - Failure"
     exit 1
