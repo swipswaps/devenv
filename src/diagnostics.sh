@@ -9,7 +9,9 @@
 # --------------------------------------------------
 function diagnostics() {
 
-    source /etc/os-release
+    if [[ -f "/etc/os-release" ]]; then
+        source /etc/os-release
+    fi
 
     echo "Devenv Diagnostic Testing"
     echo ""
