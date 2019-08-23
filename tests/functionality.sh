@@ -140,6 +140,7 @@ devenv start > "$TESTDIR/start-vanilla"
 if [[ $(cat "$TESTDIR/start-vanilla") == "Starting Devenv." ]]; then
     echo "Test #4 - Success"
 else
+    cat "$TESTDIR/start-vanilla"
     echo "Test #4 - Failure"
     exit 1
 fi

@@ -15,14 +15,15 @@ Docker-based web application development application, written in Bash.
 
 ## Current Build Status
 
-[![Release Version](https://img.shields.io/badge/development-v0.1.0--alpha-orange.svg)](https://gitlab.com/devenv-app/devenv/tags/)
+[![Release Version](https://img.shields.io/badge/stable-v0.1.0-green.svg)](https://gitlab.com/devenv-app/devenv/tags/)
+[![Release Version](https://img.shields.io/badge/development-v0.2.0--dev-orange.svg)](https://gitlab.com/devenv-app/devenv/tags/)
 
 
 |   OS     |                                                                    Status                                                                    |
 | -------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| Linux    | [![pipeline](https://gitlab.com/devenv-app/devenv/badges/rewrite/pipeline.svg)](https://gitlab.com/devenv-app/devenv/pipelines)              |
+| Linux    | [![pipeline](https://gitlab.com/devenv-app/devenv/badges/master/pipeline.svg)](https://gitlab.com/devenv-app/devenv/pipelines)              |
 | macOS    | [![OSX Build](https://travis-ci.com/jgrancell/devenv.svg?token=ySgyubABW6Cjgh9ahdn9&branch=rewrite)](https://travis-ci.com/jgrancell/devenv) |
-| Windows* | [![pipeline](https://gitlab.com/devenv-app/devenv/badges/rewrite/pipeline.svg)](https://gitlab.com/devenv-app/devenv/pipelines)              |
+| Windows* | [![pipeline](https://gitlab.com/devenv-app/devenv/badges/master/pipeline.svg)](https://gitlab.com/devenv-app/devenv/pipelines)              |
 
 \* Windows builds are only functional on Windows 10 using the Ubuntu or Fedora Linux subsystems.
 
